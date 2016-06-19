@@ -1,0 +1,50 @@
+apply plugin: 'java';
+
+task setupSuite << {
+    File folder = new File("sdk");
+    if (!folder.exists()) {
+        println "Downloading the SDK";
+        exec {
+            commandLine 'git', 'clone', '--depth', '1', 'https://github.com/jMonkeyEngine/sdk.git'
+        }
+    }
+
+    println "Building the SDK...."
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        exec {
+            workingDir folder
+            commandLine 'cmd', '/c', 'gradlew.bat', 'buildSdk'
+        }
+    } else {
+        exec { // Apply SDK Building Workaround
+            workingDir folder
+            commandLine './build_engine.sh'
+        }
+        exec {
+            workingDir folder
+            commandLine './gradlew', 'buildSdk'
+        }
+    }
+
+    def platformFile = file("nbproject/private/platform-private.properties")
+    if (!platformFile.exists()) {
+        def netbeansFolder = file("netbeans")
+        if(!netbeansFolder.exists() || netbeansFolder.list().length == 0) {
+            println "Downloading NetBeans Platform base, this only has to be done once.."
+            def f = file("netbeans.zip")
+
+            new URL(netbeansUrl).withInputStream{ i -> f.withOutputStream{ it << i }}
+            copy {
+                from zipTree(f)
+                into "."
+            }
+
+            f.delete()
+        }
+
+        file("nbproject/private/").mkdirs()
+        platformFile.createNewFile()
+        platformFile.write("nbplatform.default.netbeans.dest.dir=${netbeansFolder.absolutePath.replace('\\','/')}\r\n"+\
+        "nbplatform.default.harness.dir=${netbeansFolder.absolutePath.replace('\\','/')}/harness\r\n")
+    }
+}
