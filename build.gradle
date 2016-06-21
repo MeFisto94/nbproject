@@ -1,34 +1,49 @@
 apply plugin: 'java';
 
-task setupSuite << {
-    File folder = new File("sdk");
+task downloadEngine << {
+    File folder = new File("engine");
     if (!folder.exists()) {
-        println "Downloading the SDK";
-        exec {
-            commandLine 'git', 'clone', '--depth', '1', 'https://github.com/jMonkeyEngine/sdk.git'
-        }
-    }
+        println "Downloading the Engine";
 
-    println "Building the SDK...."
-    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
         exec {
-            workingDir folder
-            commandLine 'cmd', '/c', 'gradlew.bat', 'buildSdk'
+            commandLine 'git', 'clone', '-b', 'v3.1', '--single-branch', '--depth', '1', 'https://github.com/jMonkeyEngine/jMonkeyEngine.git', 'engine'
         }
     } else {
-        exec { // Apply SDK Building Workaround
-            workingDir folder
-            commandLine './build_engine.sh'
-        }
+        println "Trying to update the Engine..."
         exec {
-            workingDir folder
-            commandLine './gradlew', 'buildSdk'
+            commandLine 'git', 'pull'
+            workingDir 'engine'
         }
     }
+}
 
+task buildEngine(type: GradleBuild, dependsOn: downloadEngine) {
+    println "Building the Engine...."
+
+    buildFile = 'engine/build.gradle'
+    tasks = ['assemble', 'dist', 'javadocJar', 'sourcesJar'];
+}
+
+task copyLibs(type: Copy, dependsOn: buildEngine) {
+    File folder = new File("libs");
+
+    if (folder.exists())
+        folder.delete() // This only happens when something changed anyway
+
+    from {
+        fileTree(dir: "engine", includes: ["*/build/libs/jme3-*.jar"]).files // fileTree to remove the path (and only keep the filename)
+    }
+
+    into "libs"
+}
+
+task setupSuite(dependsOn: copyLibs) << {
+    // Setup Netbeans
     def platformFile = file("nbproject/private/platform-private.properties")
+
     if (!platformFile.exists()) {
         def netbeansFolder = file("netbeans")
+
         if(!netbeansFolder.exists() || netbeansFolder.list().length == 0) {
             println "Downloading NetBeans Platform base, this only has to be done once.."
             def f = file("netbeans.zip")
@@ -43,8 +58,22 @@ task setupSuite << {
         }
 
         file("nbproject/private/").mkdirs()
-        platformFile.createNewFile()
+        platformFile.createNewFile() // Tell them where netbeans lies
         platformFile.write("nbplatform.default.netbeans.dest.dir=${netbeansFolder.absolutePath.replace('\\','/')}\r\n"+\
         "nbplatform.default.harness.dir=${netbeansFolder.absolutePath.replace('\\','/')}/harness\r\n")
     }
+}
+
+task cleanSuite << {
+    File f = new File("libs")
+    if (f.exists())
+        f.delete()
+
+    f = new File("build")
+    if (f.exists())
+        f.delete()
+
+    f = new File("engine")
+    if (f.exists())
+        f.delete()
 }
