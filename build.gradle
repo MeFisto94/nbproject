@@ -1,7 +1,8 @@
 apply plugin: 'java';
 
 task downloadEngine << {
-    File folder = new File("engine");
+    File folder = file("engine");
+
     if (!folder.exists()) {
         println "Downloading the Engine";
 
@@ -25,7 +26,7 @@ task buildEngine(type: GradleBuild, dependsOn: downloadEngine) {
 }
 
 task copyLibs(type: Copy, dependsOn: buildEngine) {
-    File folder = new File("libs");
+    File folder = file("libs");
 
     if (folder.exists())
         folder.delete() // This only happens when something changed anyway
@@ -65,15 +66,15 @@ task setupSuite(dependsOn: copyLibs) << {
 }
 
 task cleanSuite << {
-    File f = new File("libs")
+    File f = file("libs")
     if (f.exists())
         f.delete()
 
-    f = new File("build")
+    f = file("build")
     if (f.exists())
         f.delete()
 
-    f = new File("engine")
+    f = file("engine")
     if (f.exists())
         f.delete()
 }
