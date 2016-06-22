@@ -1,5 +1,7 @@
 apply plugin: 'java';
 
+def engineVersion = "v3.1" // Branch Name
+
 task downloadEngine << {
     File folder = file("engine");
 
@@ -7,12 +9,12 @@ task downloadEngine << {
         println "Downloading the Engine";
 
         exec {
-            commandLine 'git', 'clone', '-b', 'v3.1', '--single-branch', '--depth', '1', 'https://github.com/jMonkeyEngine/jMonkeyEngine.git', 'engine'
+            commandLine 'git', 'clone', '-b', engineVersion, '--single-branch', '--depth', '1', 'https://github.com/jMonkeyEngine/jMonkeyEngine.git', 'engine'
         }
     } else {
         println "Trying to update the Engine..."
         exec {
-            commandLine 'git', 'pull'
+            commandLine 'git', 'pull', 'origin', engineVersion
             workingDir 'engine'
         }
     }
